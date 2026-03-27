@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>單字大師 Pro</title>
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIsWWmOWtmuWkp+W4qSBQcm8iLAogICJzaG9ydF9uYW1lIjogIsWWmOWtmuWkp+W4qiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjNmM1Y2U3IiwKICAidGhlbWVfY29sb3IiOiAiIzZjNWNlNyIsCiAgImljb25zIjogW3siInNyYyI6ICJodHRwczovL2Nkbi1pY29ucy1wbmcuZmxhdGljb24uY29tLzUxMi8zNTg5LzM1ODkwMTQucG5nIiwgInNpemVzIjogIjUxMng1MTIiLCAidHlwZSI6ICJpbWFnZS9wbmciIH1dCn0=">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #6c5ce7; --bg: #f8f9fa; --text: #2d3436; --success: #27ae60; --danger: #e74c3c; }
+        body { font-family: 'PingFang TC', sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 500px; min-height: 100vh; background: white; padding: 20px; box-sizing: border-box; position: relative; }
+
+        .page { display: none; animation: fadeIn 0.3s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* UI 元件 */
+        .btn { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1rem; margin-top: 10px; }
+        .input-box { border: 1px solid #ddd; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
+        .menu-item { background: var(--primary); color: white; padding: 30px; border-radius: 20px; text-align: center; cursor: pointer; margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+        /* 報表樣式 */
+        .report-card { text-align: center; background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .score-text { font-size: 3rem; font-weight: bold; color: var(--primary); margin: 10px 0; }
+        .comment-text { font-size: 1.5rem; font-weight: bold; margin-bottom: 15px; }
+        .gif-container img { width: 100%; max-width: 250px; border-radius: 15px; margin-bottom: 20px; }
+        .wrong-list { text-align: left; background: #fff5f5; padding: 15px; border-radius: 10px; margin-top: 20px; }
+
+        /* 單字項目與圖標 */
+        .word-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
+        .icon-btn { cursor: pointer; font-size: 22px; margin-left: 10px; transition: 0.2s; }
+        .delete-icon { color: var(--danger); }
+        .edit-icon { color: #f39c12; }
+
+        /* 測驗選項 */
+        .options-grid { display: grid; gap: 10px; margin-top: 20px; }
+        .opt-btn { background: white; border: 2px solid #eee; padding: 15px; border-radius: 12px; cursor: pointer; text-align: left; font-size: 1rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="page-home" class="page active">
+        <h1 style="text-align: center;">🎓 單字大師 Pro</h1>
+        <div class="menu-item" onclick="showPage('page-library')">
+            <span class="material-icons" style="font-size: 40px;">folder</span>
+            單字庫與分組管理
+        </div>
+        <div class="menu-item" style="background: #00b894;" onclick="startQuizFlow()">
+            <span class="material-icons" style="font-size: 40px;">play_circle</span>
+            開始 10 題測驗
+        </div>
+        <p style="text-align: center; color: #888; font-size: 0.8rem; margin-top: 30px;">提示：點選瀏覽器菜單的「新增至主畫面」即可安裝 App</p>
+    </div>
+
+    <div id="page-library" class="page">
+        <div style="display:flex; align-items:center;">
+            <span class="material-icons" onclick="showPage('page-home')" style="cursor:pointer;">arrow_back</span>
+            <h2 style="margin-left:10px;">單字分組</h2>
+        </div>
+        <input type="text" id="newGroupName" class="input-box" placeholder="新分組名稱...">
+        <button class="btn" onclick="addNewGroup()">建立分組</button>
+        <div id="group-list" style="margin-top:20px;"></div>
+    </div>
+
+    <div id="page-words" class="page">
+        <div style="display:flex; align-items:center;">
+            <span class="material-icons" onclick="showPage('page-library')" style="cursor:pointer;">arrow_back</span>
+            <h2 id="current-group-name" style="margin-left:10px;">分組</h2>
+        </div>
+        <div style="background:#f1f2f6; padding:15px; border-radius:12px;">
+            <input type="text" id="eng-in" class="input-box" placeholder="英文">
+            <input type="text" id="chi-in" class="input-box" placeholder="中文">
+            <button class="btn" id="save-btn" onclick="addOrUpdateWord()">儲存單字</button>
+        </div>
+        <div id="word-list" style="margin-top:20px;"></div>
+    </div>
+
+    <div id="page-quiz" class="page">
+        <h2 id="quiz-header" style="text-align:center; color:var(--primary);">題目 1 / 10</h2>
+        <div id="q-eng" style="font-size: 2.5rem; text-align:center; margin:30px 0; font-weight:bold;">Word</div>
+        <div class="options-grid" id="q-options"></div>
+        <button id="next-q-btn" class="btn" style="display:none; background:#00b894;" onclick="renderNextQuestion()">下一題</button>
+    </div>
+
+    <div id="page-report" class="page">
+        <div class="report-card">
+            <h2 id="result-title">測驗完成！</h2>
+            <div class="gif-container" id="result-gif"></div>
+            <div class="comment-text" id="result-comment">加油</div>
+            <div class="score-text" id="result-score">80分</div>
+            <canvas id="scoreChart" width="200" height="200" style="margin: 0 auto;"></canvas>
+
+            <div class="wrong-list" id="wrong-summary">
+                <strong>本次錯誤單字：</strong>
+                <div id="wrong-items-list" style="margin-top:10px;"></div>
+            </div>
+
+            <button class="btn" onclick="location.reload()">回首頁</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db = JSON.parse(localStorage.getItem('vocabDB_v3')) || [];
+    let curGroup = "";
+    let editIdx = -1;
+
+    // 分數配置 (評語與 GIF)
+    const feedback = {
+        bad: { text: "要努力", gif: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/26ybvVb9pSmREUu6A/giphy.gif" },
+        ok: { text: "加油", gif: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/11F0d3IVhQbreE/giphy.gif" },
+        good: { text: "差一點", gif: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKVUn7iM8FMEU24/giphy.gif" },
+        perfect: { text: "太棒了!", gif: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6bmZ6NXp6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/l0HTYUmU67pLWv1a8/giphy.gif" }
+    };
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'page-library') renderGroups();
+    }
+
+    // 管理邏輯
+    function addNewGroup() {
+        const name = document.getElementById('newGroupName').value.trim();
+        if(!name) return;
+        curGroup = name;
+        showPage('page-words');
+        renderWords();
+        document.getElementById('newGroupName').value = "";
+    }
+
+    function renderGroups() {
+        const container = document.getElementById('group-list');
+        const groups = [...new Set(db.map(i => i.group))];
+        container.innerHTML = groups.map(g => `
+            <div class="word-item" style="background:#eee; padding:15px; border-radius:10px; margin-bottom:10px; cursor:pointer;" onclick="enterGroup('${g}')">
+                <span>${g} (${db.filter(i => i.group === g).length})</span>
+                <span class="material-icons">chevron_right</span>
+            </div>
+        `).join('') || "尚無分組";
+    }
+
+    function enterGroup(g) { curGroup = g; showPage('page-words'); renderWords(); }
+
+    function renderWords() {
+        document.getElementById('current-group-name').innerText = curGroup;
+        const container = document.getElementById('word-list');
+        const filtered = db.filter(i => i.group === curGroup);
+        container.innerHTML = filtered.map(item => {
+            const realIdx = db.indexOf(item);
+            return `
+            <div class="word-item">
+                <div><b>${item.eng}</b><br><small>${item.chi} (錯: ${item.errorCount})</small></div>
+                <div>
+                    <span class="material-icons icon-btn edit-icon" onclick="editWord(${realIdx})">edit</span>
+                    <span class="material-icons icon-btn delete-icon" onclick="deleteWord(${realIdx})">delete</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function addOrUpdateWord() {
+        const eng = document.getElementById('eng-in').value.trim();
+        const chi = document.getElementById('chi-in').value.trim();
+        if(!eng || !chi) return;
+        if(editIdx > -1) {
+            db[editIdx].eng = eng; db[editIdx].chi = chi; editIdx = -1;
+            document.getElementById('save-btn').innerText = "儲存單字";
+        } else {
+            db.push({ eng, chi, group: curGroup, errorCount: 0 });
+        }
+        localStorage.setItem('vocabDB_v3', JSON.stringify(db));
+        document.getElementById('eng-in').value = ""; document.getElementById('chi-in').value = "";
+        renderWords();
+    }
+
+    function deleteWord(idx) { if(confirm("刪除？")) { db.splice(idx, 1); localStorage.setItem('vocabDB_v3', JSON.stringify(db)); renderWords(); } }
+    function editWord(idx) {
+        editIdx = idx;
+        document.getElementById('eng-in').value = db[idx].eng;
+        document.getElementById('chi-in').value = db[idx].chi;
+        document.getElementById('save-btn').innerText = "更新單字";
+    }
+
+    // 測驗邏輯
+    let quizArr = [], qPtr = 0, corrects = 0, wrongHistory = [];
+    function startQuizFlow() {
+        if(db.length < 4) return alert("單字量不足");
+        quizArr = [...db].sort(() => 0.5 - Math.random()).slice(0, 10);
+        qPtr = 0; corrects = 0; wrongHistory = [];
+        showPage('page-quiz');
+        renderNextQuestion();
+    }
+
+    function renderNextQuestion() {
+        if(qPtr >= quizArr.length) return showReport();
+        const cur = quizArr[qPtr];
+        document.getElementById('quiz-header').innerText = `題目 ${qPtr + 1} / ${quizArr.length}`;
+        document.getElementById('q-eng').innerText = cur.eng;
+        document.getElementById('next-q-btn').style.display = 'none';
+
+        const optsDiv = document.getElementById('q-options');
+        optsDiv.innerHTML = '';
+        let pool = [...new Set(db.map(i => i.chi))].filter(c => c !== cur.chi);
+        let final = [cur.chi, ...pool.sort(() => 0.5 - Math.random()).slice(0, 3)].sort(() => 0.5 - Math.random());
+
+        final.forEach(opt => {
+            const b = document.createElement('button');
+            b.className = 'opt-btn'; b.innerText = opt;
+            b.onclick = () => {
+                document.querySelectorAll('.opt-btn').forEach(btn => btn.disabled = true);
+                if(opt === cur.chi) {
+                    b.style.borderColor = "var(--success)"; corrects++;
+                } else {
+                    b.style.borderColor = "var(--danger)";
+                    wrongHistory.push(cur);
+                    const t = db.find(i => i.eng === cur.eng); if(t) t.errorCount++;
+                    localStorage.setItem('vocabDB_v3', JSON.stringify(db));
+                }
+                qPtr++; document.getElementById('next-q-btn').style.display = 'block';
+            };
+            optsDiv.appendChild(b);
+        });
+    }
+
+    function showReport() {
+        showPage('page-report');
+        const score = Math.round((corrects / quizArr.length) * 100);
+        document.getElementById('result-score').innerText = `${score} 分`;
+
+        let res = feedback.bad;
+        if(score === 100) res = feedback.perfect;
+        else if(score > 60) res = feedback.good;
+        else if(score > 30) res = feedback.ok;
+
+        document.getElementById('result-comment').innerText = res.text;
+        document.getElementById('result-gif').innerHTML = `<img src="${res.gif}">`;
+
+        // 錯誤清單
+        document.getElementById('wrong-items-list').innerHTML = wrongHistory.length > 0
+            ? wrongHistory.map(w => `<div>❌ ${w.eng} (${w.chi})</div>`).join('')
+            : "全對！太厲害了！";
+
+        // 繪製圖表
+        new Chart(document.getElementById('scoreChart'), {
+            type: 'pie',
+            data: {
+                labels: ['正確', '錯誤'],
+                datasets: [{
+                    data: [corrects, quizArr.length - corrects],
+                    backgroundColor: ['#27ae60', '#e74c3c']
+                }]
+            },
+            options: { responsive: false }
+        });
+    }
+</script>
+</body>
+</html>
