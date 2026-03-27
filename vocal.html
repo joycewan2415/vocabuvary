@@ -2,179 +2,316 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>單字召喚師：傳說卡冊</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>單字召喚師 - 完整管理圖鑑</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         :root { 
-            --primary: #6c5ce7; --gold: #f1c40f; --purple: #a29bfe; 
-            --rarity1: #b2bec3; --rarity2: #55efc4; --rarity3: #0984e3; --rarity4: #6c5ce7; --rarity5: #d63031;
+            --primary: #a29bfe; --gold: #ffeaa7; --bg: #1e272e;
+            --r1: #dcdde1; --r2: #55efc4; --r3: #74b9ff; --r4: #a29bfe; --r5: #ff7675;
+            --danger: #ff4757; --info: #74b9ff;
         }
-        body { font-family: 'PingFang TC', sans-serif; background: #2d3436; color: white; margin: 0; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 500px; min-height: 100vh; background: #1e272e; padding: 20px; box-sizing: border-box; }
-        .page { display: none; animation: fadeIn 0.4s ease; }
-        .page.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-
-        /* 頂部狀態列 */
-        .status-bar { display: flex; justify-content: space-between; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; margin-bottom: 20px; border: 1px solid #444; }
-        .pt-val { color: var(--gold); font-weight: bold; }
-        .pity-val { font-size: 0.8rem; color: #aaa; }
-
-        /* 卡片與網格 */
-        .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .card-slot { aspect-ratio: 2/3; background: #2f3640; border-radius: 8px; position: relative; overflow: hidden; border: 2px solid transparent; }
-        .card-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
-        .card-slot.owned .card-img { opacity: 1; }
-        .stars { position: absolute; top: 2px; left: 2px; font-size: 10px; color: var(--gold); display: flex; }
+        body { font-family: 'PingFang TC', sans-serif; background: var(--bg); color: white; margin: 0; padding: 0; }
+        .container { width: 100%; max-width: 500px; min-height: 100vh; background: #2d3436; padding: 15px; box-sizing: border-box; margin: 0 auto; display: flex; flex-direction: column; }
         
-        /* 抽卡結果特效 */
-        .gacha-result-overlay { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
-        .new-card-card { animation: cardPop 0.5s ease backwards; }
-        @keyframes cardPop { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        
-        /* 稀有特效 */
-        .rarity-5-glow { box-shadow: 0 0 15px var(--rarity5); border: 2px solid var(--rarity5) !important; animation: glow 1s infinite alternate; }
-        @keyframes glow { from { filter: brightness(1); } to { filter: brightness(1.5); } }
+        .page { display: none; animation: fadeIn 0.3s ease; flex-grow: 1; }
+        .page.active { display: flex; flex-direction: column; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* 按鈕 */
-        .btn { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 12px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; }
-        .btn-gacha { background: linear-gradient(45deg, #6c5ce7, #a29bfe); border-bottom: 4px solid #4834d4; }
-        .btn-gacha:active { transform: translateY(2px); border-bottom: 0; }
+        /* 頂部狀態 */
+        .status-header { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.6); padding: 12px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #444; position: sticky; top: 10px; z-index: 100; backdrop-filter: blur(5px); }
+        .pt-box { color: var(--gold); font-weight: bold; display: flex; align-items: center; gap: 5px; }
+
+        /* 警告標籤 */
+        .alert-banner { background: var(--danger); color: white; padding: 12px; border-radius: 10px; margin-bottom: 15px; display: none; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: bold; }
+
+        /* 按鈕與卡片 */
+        .btn { background: var(--primary); color: #2d3436; border: none; padding: 15px; border-radius: 12px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        .btn:active { transform: scale(0.95); }
+        .btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+
+        /* 單字卡片優化 */
+        .item-card { background: #3d444b; padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid var(--primary); position: relative; }
+        .item-actions { display: flex; gap: 12px; align-items: center; }
+        .action-icon { cursor: pointer; font-size: 1.3rem; transition: 0.2s; }
+        .action-icon:active { transform: scale(0.8); }
+        .icon-edit { color: var(--info); }
+        .icon-del { color: var(--danger); }
+
+        .mastery-bar { height: 4px; background: #222; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+        .mastery-fill { height: 100%; transition: 0.5s; }
+
+        /* 預覽 Overlay */
+        #preview-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        #preview-img { width: 85%; max-width: 380px; border-radius: 20px; border: 3px solid white; }
+
+        .input-box { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #555; background: #1e272e; color: white; margin-bottom: 8px; box-sizing: border-box; }
+        .gacha-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .card-vanilla { aspect-ratio: 2/3; border-radius: 12px; border: 2px solid #555; background: #000; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; }
+        .card-img { width: 100%; height: 75%; object-fit: cover; }
     </style>
 </head>
 <body>
 
+<div id="preview-overlay" onclick="this.style.display='none'">
+    <img id="preview-img" src="">
+</div>
+
 <div class="container">
-    <div class="status-bar">
-        <div><span class="pt-val" id="pt-count">0</span> PT</div>
-        <div class="pity-val">保底進度: <span id="pity-count">0</span>/50</div>
+    <div class="status-header">
+        <div class="pt-box"><span class="material-icons">stars</span><span id="pt-display">0</span></div>
+        <div style="font-size: 0.8rem; color: #aaa;">遺忘警戒: <span id="weak-count" style="color:var(--r5)">0</span></div>
+    </div>
+
+    <div id="recall-alert" class="alert-banner">
+        <span class="material-icons">lock</span>
+        <span>弱點單字過多，召喚女神功能已鎖定！</span>
     </div>
 
     <div id="page-home" class="page active">
-        <h1 style="text-align:center;">🗡️ 單字召喚師</h1>
-        <button class="btn" style="height:80px; font-size:1.2rem; background:#27ae60;" onclick="startQuiz()">進入修煉 (賺點數)</button>
-        <button class="btn" onclick="showPage('page-shop')">前往商店</button>
-        <button class="btn" onclick="openCollection()" style="background:#f39c12;">卡冊成就</button>
+        <h1 style="text-align:center; margin: 20px 0; letter-spacing: 2px;">召喚師圖鑑 V13</h1>
+        <button class="btn" onclick="startQuizFlow(false)" style="background:#55efc4;"><span class="material-icons">psychology</span>開始一般修煉</button>
+        <button class="btn" onclick="startQuizFlow(true)" style="background:var(--r5); color:white;"><span class="material-icons">history_edu</span>弱點消除測驗</button>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+            <button class="btn" onclick="showPage('page-groups')"><span class="material-icons">folder_special</span>管理分組</button>
+            <button id="shop-btn" class="btn" onclick="showPage('page-shop')" style="background:#fab1a0;"><span class="material-icons">auto_fix_high</span>召喚女神</button>
+        </div>
+        <button class="btn" onclick="showPage('page-col-menu')" style="background:var(--gold); margin-top:12px;"><span class="material-icons">collections_bookmark</span>我的卡冊</button>
+    </div>
+
+    <div id="page-groups" class="page">
+        <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons" onclick="showPage('page-home')">arrow_back</span><h2>分組管理</h2></div>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="new-group-name" class="input-box" placeholder="新組名..." style="margin:0;">
+            <button class="btn" onclick="createGroup()" style="margin:0; width:50px;"><span class="material-icons">add</span></button>
+        </div>
+        <div id="group-list" style="margin-top:20px;"></div>
+    </div>
+
+    <div id="page-words" class="page">
+        <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons" onclick="showPage('page-groups')">arrow_back</span><h2 id="cur-group-title">單字列表</h2></div>
+        <div style="background:#3d444b; padding:15px; border-radius:12px; margin-bottom:15px;">
+            <input type="text" id="in-eng" class="input-box" placeholder="英文單字">
+            <input type="text" id="in-chi" class="input-box" placeholder="中文翻譯">
+            <button class="btn" onclick="addWord()"><span class="material-icons">save</span>儲存至此分組</button>
+        </div>
+        <div id="word-list"></div>
     </div>
 
     <div id="page-shop" class="page">
-        <h2>💎 召喚商店</h2>
-        <div style="background:#2f3640; padding:20px; border-radius:15px; text-align:center;">
-            <h3>高級召喚包</h3>
-            <p>內容物：隨機卡片 x 5</p>
-            <p style="color:var(--gold);">價格：200 PT</p>
-            <button class="btn btn-gacha" onclick="pullGacha()">購買並召喚</button>
+        <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons" onclick="showPage('page-home')">arrow_back</span><h2>女神召喚</h2></div>
+        <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:15px; text-align:center; border:2px dashed var(--gold);">
+            <div style="font-size:1.5rem; color:var(--gold); font-weight:bold; margin-bottom:10px;">200 PT / 五連召喚</div>
+            <button class="btn" onclick="drawGacha()" style="background:linear-gradient(45deg, #a29bfe, #6c5ce7); color:white;">開始召喚儀式</button>
         </div>
-        <div id="gacha-display" class="gacha-result-overlay"></div>
-        <button class="btn" onclick="showPage('page-home')" style="background:#636e72;">返回</button>
+        <div id="gacha-res" class="gacha-grid"></div>
     </div>
 
-    <div id="page-collection" class="page">
-        <h2>📜 卡冊 <span id="col-stat" style="font-size:1rem;"></span></h2>
-        <div class="card-grid" id="col-grid"></div>
-        <button class="btn" onclick="showPage('page-home')">返回</button>
+    <div id="page-col-menu" class="page">
+        <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons" onclick="showPage('page-home')">arrow_back</span><h2>星級卡冊</h2></div>
+        <div id="col-group-container" style="margin-top:10px;"></div>
+    </div>
+
+    <div id="page-col-detail" class="page">
+        <div style="display:flex; align-items:center; gap:10px;"><span class="material-icons" onclick="showPage('page-col-menu')">arrow_back</span><h2 id="col-detail-title">詳情</h2></div>
+        <div id="col-detail-grid" class="gacha-grid"></div>
+    </div>
+
+    <div id="page-quiz" class="page">
+        <h3 id="quiz-progress" style="text-align:center; color:#aaa;">題目載入中...</h3>
+        <div class="quiz-q" id="quiz-q">Loading...</div>
+        <div id="quiz-opts"></div>
     </div>
 </div>
 
 <script>
-    // --- 遊戲資料 ---
-    let state = JSON.parse(localStorage.getItem('summoner_db')) || {
-        points: 500,
-        pity: 0,
-        collection: [] // 儲存格式: {id: 1, star: 5}
+    // --- 核心資料 ---
+    let state = JSON.parse(localStorage.getItem('vocab_summon_v13')) || {
+        pt: 600, pity: 0, groups: {}, collection: []
     };
+    let curGroup = "";
+    const CATEGORIES = [
+        { id: 'girl', name: '少女', color: '#fd79a8', api: 'https://nekos.best/api/v2/waifu' },
+        { id: 'beast', name: '幻獸', color: '#e17055', api: 'https://nekos.best/api/v2/kitsune' }
+    ];
 
     function save() {
-        localStorage.setItem('summoner_db', JSON.stringify(state));
-        document.getElementById('pt-count').innerText = state.points;
-        document.getElementById('pity-count').innerText = state.pity;
+        localStorage.setItem('vocab_summon_v13', JSON.stringify(state));
+        updateHeader();
     }
 
-    // --- 抽卡邏輯 ---
-    const getStar = () => {
-        state.pity++;
-        if (state.pity >= 50) { // 保底
-            state.pity = 0;
-            return 5;
-        }
-        const r = Math.random() * 100;
-        if (r < 1) { state.pity = 0; return 5; } // 1%
-        if (r < 6) return 4;  // 5%
-        if (r < 20) return 3; // 14%
-        if (r < 50) return 2; // 30%
-        return 1;             // 50%
-    };
-
-    function pullGacha() {
-        if (state.points < 200) return alert("點數不足！");
-        state.points -= 200;
-        
-        const results = [];
-        const display = document.getElementById('gacha-display');
-        display.innerHTML = "";
-
-        for (let i = 0; i < 5; i++) {
-            const star = getStar();
-            const cardId = Math.floor(Math.random() * 200) + 1;
-            const isDup = state.collection.some(c => c.id === cardId);
-            
-            results.push({ id: cardId, star });
-
-            if (isDup) {
-                state.points += 100; // 重複返還 50%
-            } else {
-                state.collection.push({ id: cardId, star });
-            }
-
-            // 建立顯示元件
-            const cardEl = document.createElement('div');
-            cardEl.className = `card-slot new-card-card ${star === 5 ? 'rarity-5-glow' : ''}`;
-            cardEl.style.animationDelay = `${i * 0.1}s`;
-            cardEl.innerHTML = `
-                <img src="https://picsum.photos/id/${cardId+50}/200/300" class="card-img">
-                <div class="stars">${'⭐'.repeat(star)}</div>
-                ${isDup ? '<div style="position:absolute; top:40%; width:100%; text-align:center; background:rgba(0,0,0,0.7); font-size:10px;">REWARD +100</div>' : ''}
-            `;
-            display.appendChild(cardEl);
-        }
-        save();
-    }
-
-    // --- 卡冊顯示 ---
-    function openCollection() {
-        showPage('page-collection');
-        const grid = document.getElementById('col-grid');
-        grid.innerHTML = "";
-        
-        // 依照星級排序
-        state.collection.sort((a,b) => b.star - a.star);
-        document.getElementById('col-stat').innerText = `(${state.collection.length}/200)`;
-
-        state.collection.forEach(card => {
-            const slot = document.createElement('div');
-            slot.className = `card-slot owned ${card.star === 5 ? 'rarity-5-glow' : ''}`;
-            slot.innerHTML = `
-                <img src="https://picsum.photos/id/${card.id+50}/200/300" class="card-img">
-                <div class="stars">${'⭐'.repeat(card.star)}</div>
-            `;
-            grid.appendChild(slot);
+    function updateHeader() {
+        document.getElementById('pt-display').innerText = state.pt;
+        let weakCount = 0;
+        Object.values(state.groups).forEach(g => {
+            g.forEach(w => { if((w.wrong || 0) - (w.correct || 0) >= 2) weakCount++; });
         });
+        document.getElementById('weak-count').innerText = weakCount;
+        const isLocked = weakCount >= 5;
+        document.getElementById('recall-alert').style.display = isLocked ? 'flex' : 'none';
+        document.getElementById('shop-btn').disabled = isLocked;
     }
 
-    // --- 頁面切換 ---
     function showPage(id) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(id).classList.add('active');
+        if(id === 'page-groups') renderGroups();
+        if(id === 'page-col-menu') renderColMenu();
     }
 
-    // 模擬測驗獲得點數
-    function startQuiz() {
-        const win = confirm("測驗結束！獲得 100 分。領取 100 PT 獎勵？");
-        if(win) { state.points += 100; save(); }
+    // --- 單字管理：新增、刪除、編輯 ---
+    function addWord() {
+        let eng = document.getElementById('in-eng').value.trim();
+        let chi = document.getElementById('in-chi').value.trim();
+        if(!eng || !chi) return;
+        state.groups[curGroup].push({ eng, chi, correct: 0, wrong: 0, lastTime: Date.now() });
+        save(); renderWords();
+        document.getElementById('in-eng').value = ""; document.getElementById('in-chi').value = "";
     }
 
-    save(); // 初始化介面
+    // [核心功能] 編輯單字
+    function editWord(index) {
+        let word = state.groups[curGroup][index];
+        let newEng = prompt("修改英文單字:", word.eng);
+        let newChi = prompt("修改中文翻譯:", word.chi);
+        
+        if (newEng !== null && newChi !== null) {
+            word.eng = newEng.trim() || word.eng;
+            word.chi = newChi.trim() || word.chi;
+            save();
+            renderWords();
+        }
+    }
+
+    // [核心功能] 刪除單字
+    function deleteWord(index) {
+        if (confirm(`確定要刪除「${state.groups[curGroup][index].eng}」嗎？`)) {
+            state.groups[curGroup].splice(index, 1);
+            save();
+            renderWords();
+        }
+    }
+
+    function renderWords() {
+        document.getElementById('word-list').innerHTML = state.groups[curGroup].map((w, i) => {
+            let score = (w.correct || 0) - (w.wrong || 0);
+            let percent = Math.max(10, Math.min(100, 50 + score * 10));
+            return `
+            <div class="item-card">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div>
+                        <b style="font-size:1.1rem; color:var(--primary);">${w.eng}</b><br>
+                        <span style="color:#ccc;">${w.chi}</span>
+                    </div>
+                    <div class="item-actions">
+                        <span class="material-icons action-icon icon-edit" onclick="editWord(${i})">edit</span>
+                        <span class="material-icons action-icon icon-del" onclick="deleteWord(${i})">delete</span>
+                    </div>
+                </div>
+                <div class="mastery-bar">
+                    <div class="mastery-fill" style="width:${percent}%; background:${percent<50?'var(--r5)':'var(--r2)'}"></div>
+                </div>
+                <div style="font-size:0.7rem; color:#888; margin-top:5px;">熟練度: ${percent}% (答對:${w.correct||0} / 答錯:${w.wrong||0})</div>
+            </div>`;
+        }).join('');
+    }
+
+    // --- 召喚、測驗、分組其餘邏輯 (維持 V12) ---
+    function createGroup() {
+        let name = document.getElementById('new-group-name').value.trim();
+        if(name && !state.groups[name]) { state.groups[name] = []; save(); renderGroups(); document.getElementById('new-group-name').value=""; }
+    }
+
+    function renderGroups() {
+        document.getElementById('group-list').innerHTML = Object.keys(state.groups).map(g => `
+            <div class="item-card" onclick="curGroup='${g}'; document.getElementById('cur-group-title').innerText='${g}'; showPage('page-words'); renderWords();">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <b>${g}</b>
+                    <div style="display:flex; align-items:center; gap:5px; color:#aaa;">${state.groups[g].length} 單字 <span class="material-icons">chevron_right</span></div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function drawGacha() {
+        if(state.pt < 200) return alert("PT不足!");
+        state.pt -= 200;
+        const grid = document.getElementById('gacha-res');
+        grid.innerHTML = "<p style='grid-column:span 3;text-align:center;'>召喚女神中...</p>";
+        let tasks = [];
+        for(let i=0; i<5; i++){
+            let star = Math.random()<0.03 ? 5 : (Math.random()<0.1 ? 4 : (Math.random()<0.3 ? 3 : 2));
+            let cat = CATEGORIES[Math.floor(Math.random()*CATEGORIES.length)];
+            tasks.push({ star, cat });
+        }
+        const cards = await Promise.all(tasks.map(async t => {
+            const res = await fetch(t.cat.api);
+            const data = await res.json();
+            return { ...t, url: data.results[0].url };
+        }));
+        grid.innerHTML = "";
+        cards.forEach(c => {
+            state.collection.push(c);
+            const el = document.createElement('div');
+            el.className = `card-vanilla ${c.star === 5 ? 'rare-5' : ''}`;
+            el.onclick = () => { document.getElementById('preview-img').src = c.url; document.getElementById('preview-overlay').style.display = 'flex'; };
+            el.innerHTML = `<img src="${c.url}" class="card-img" loading="lazy">
+                <div style="background:rgba(0,0,0,0.5); text-align:center; font-size:8px; padding:2px;">${'⭐'.repeat(c.star)}</div>`;
+            grid.appendChild(el);
+        });
+        save();
+    }
+
+    function renderColMenu() {
+        const names = ["","普通","優秀","珍稀","史詩","傳說"];
+        document.getElementById('col-group-container').innerHTML = [5,4,3,2,1].map(s => {
+            let count = state.collection.filter(c=>c.star==s).length;
+            return `<div class="btn" style="background:#3d444b; color:white; border:1px solid #555;" onclick="viewCollection(${s})">
+                ${names[s]}卡冊 (${count} 張) <span style="color:var(--gold); margin-left:auto;">${'⭐'.repeat(s)}</span>
+            </div>`;
+        }).join('');
+    }
+
+    function viewCollection(s) {
+        showPage('page-col-detail');
+        const grid = document.getElementById('col-detail-grid');
+        grid.innerHTML = state.collection.filter(c=>c.star==s).map(c => `
+            <div class="card-vanilla" onclick="document.getElementById('preview-img').src='${c.url}';document.getElementById('preview-overlay').style.display='flex';">
+                <img src="${c.url}" class="card-img">
+            </div>`).join('');
+    }
+
+    // 測驗系統
+    let qPool=[], qIdx=0, isRedemption=false;
+    function startQuizFlow(redMode) {
+        isRedemption = redMode;
+        let allWords = [];
+        Object.values(state.groups).forEach(g => allWords.push(...g));
+        if(allWords.length < 4) return alert("單字不夠!");
+        qPool = isRedemption ? allWords.filter(w => (w.wrong || 0) > (w.correct || 0)) : allWords.sort(() => 0.5 - Math.random()).slice(0, 10);
+        if(isRedemption && qPool.length === 0) return alert("沒有弱點單字!");
+        qIdx = 0; showPage('page-quiz'); renderQuiz();
+    }
+    function renderQuiz() {
+        if(qIdx >= qPool.length) { alert("修煉完成！"); save(); showPage('page-home'); return; }
+        let cur = qPool[qIdx];
+        document.getElementById('quiz-progress').innerText = `${isRedemption?'弱點消除':'一般測驗'}: ${qIdx+1}/${qPool.length}`;
+        document.getElementById('quiz-q').innerText = cur.eng;
+        let allChi = [];
+        Object.values(state.groups).forEach(g => allChi.push(...g.map(w=>w.chi)));
+        let opts = [cur.chi, ...[...new Set(allChi)].filter(c=>c!==cur.chi).sort(()=>0.5-Math.random()).slice(0,3)].sort(()=>0.5-Math.random());
+        document.getElementById('quiz-opts').innerHTML = opts.map(o => `<button class="opt-btn" onclick="checkQuiz('${o}','${cur.chi}')">${o}</button>`).join('');
+    }
+    function checkQuiz(p, r) {
+        let wordObj;
+        Object.values(state.groups).forEach(g => { let f = g.find(w => w.eng === qPool[qIdx].eng); if(f) wordObj = f; });
+        if(p === r) { wordObj.correct = (wordObj.correct || 0) + 1; state.pt += (isRedemption ? 5 : 20); }
+        else { wordObj.wrong = (wordObj.wrong || 0) + 1; }
+        qIdx++; renderQuiz();
+    }
+
+    save(); // 初始化
 </script>
 </body>
 </html>
